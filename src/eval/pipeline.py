@@ -13,7 +13,6 @@ from typing import Any, Iterable
 from .config import (
     get_default_max_tokens,
     get_system_prompt,
-    is_reasoning_model,
     resolve_dataset_path,
     resolve_image_root,
     resolve_results_root,
@@ -114,7 +113,7 @@ def _build_parser(
     parser.add_argument("--api-key", type=str, default="")
     parser.add_argument("--base-url", type=str, default="http://0.0.0.0:8192/v1")
     parser.add_argument("--num-samples", type=int, default=-1)
-    parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--temperature", type=float, default=None)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--prompt-type", type=str, default=default_prompt_type, choices=resolved_prompt_choices)
     parser.add_argument("--data-type", type=str, default=default_data_type, choices=resolved_data_choices)
@@ -174,8 +173,10 @@ def _resolve_runtime(args: argparse.Namespace) -> tuple[Path, Path, Path, str, l
     return dataset_path, image_root, out_dir, prompt, filtered_items
 
 
-def _effective_temperature(model_key: str, temperature: float) -> float:
-    return 1.0 if is_reasoning_model(model_key) else temperature
+def _effective_temperature(prompt_type: str, temperature: float | None) -> float:
+    if temperature is not None:
+        return temperature
+    return 1.0 if "reasoning" in prompt_type else 0.1
 
 
 def _print_item_trace(item: Item, text: str, predicted_answer: int, is_correct: bool) -> None:
@@ -241,7 +242,7 @@ def _save_run(
         "evaluation_settings": {
             "num_samples": len(items),
             "max_tokens": args.max_tokens,
-            "temperature": args.temperature,
+            "temperature": _effective_temperature(args.prompt_type, args.temperature),
             "top_p": args.top_p,
             "base_url": args.base_url,
             "seed": args.seed,
@@ -301,7 +302,7 @@ async def _run_openai_compatible_async(args: argparse.Namespace) -> int:
         return 1
 
     runner = OpenAICompatibleRunner(api_key=args.api_key, base_url=args.base_url)
-    effective_temperature = _effective_temperature(args.model, args.temperature)
+    effective_temperature = _effective_temperature(args.prompt_type, args.temperature)
     semaphore = asyncio.Semaphore(max(1, args.concurrency))
     tasks = []
 
@@ -363,7 +364,7 @@ def _run_chatgpt(args: argparse.Namespace, *, thinking: bool, filename_tag: str)
         return 1
 
     runner = ChatGPTRunner(api_key=args.api_key, base_url=args.base_url, thinking=thinking)
-    effective_temperature = _effective_temperature(args.model, args.temperature)
+    effective_temperature = _effective_temperature(args.prompt_type, args.temperature)
     results: list[EvaluationResult] = []
     raw_results: list[dict[str, Any]] = []
 
@@ -412,7 +413,7 @@ def _run_transformers(args: argparse.Namespace) -> int:
         return 1
 
     runner = TransformersRunner(model_name=args.model, device=args.device)
-    effective_temperature = _effective_temperature(args.model, args.temperature)
+    effective_temperature = _effective_temperature(args.prompt_type, args.temperature)
     results: list[EvaluationResult] = []
     progress = tqdm(items, desc=f"Processing {args.model} | {args.prompt_type} {args.data_type}", unit="item")
 

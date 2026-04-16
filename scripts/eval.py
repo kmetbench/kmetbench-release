@@ -131,13 +131,14 @@ def _run_command(args: argparse.Namespace) -> int:
     engine = config.model.engine.lower()
     api_key = _resolve_api_key(config.model.api_key_env, args.api_key)
     base_url = args.base_url if args.base_url is not None else config.model.base_url
+    resolved_params = config.resolve_params(args.prompt_type)
 
-    if args.temperature is None and config.model.params.temperature is not None:
-        args.temperature = float(config.model.params.temperature)
-    if args.top_p is None and config.model.params.top_p is not None:
-        args.top_p = float(config.model.params.top_p)
-    if args.max_tokens is None and config.model.params.max_tokens is not None:
-        args.max_tokens = int(config.model.params.max_tokens)
+    if args.temperature is None and resolved_params.temperature is not None:
+        args.temperature = float(resolved_params.temperature)
+    if args.top_p is None and resolved_params.top_p is not None:
+        args.top_p = float(resolved_params.top_p)
+    if args.max_tokens is None and resolved_params.max_tokens is not None:
+        args.max_tokens = int(resolved_params.max_tokens)
     if args.device is None:
         transformers_section = config.get_section("transformers")
         if isinstance(transformers_section.get("device"), str):

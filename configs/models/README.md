@@ -28,3 +28,8 @@ Reasoning judge stays inside the same top-level script:
 ```bash
 python scripts/eval.py judge --model Qwen/Qwen3-VL-8B-Thinking
 ```
+
+Model YAML may also define `prompt_overrides` keyed by runtime profile or exact
+prompt type. Typical use is to keep `advanced` and `reasoning` decoding settings
+separate, for example `advanced.temperature = 0.1` and
+`reasoning.temperature = 1.0`.

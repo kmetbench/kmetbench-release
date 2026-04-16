@@ -51,6 +51,7 @@ class LoadedModelConfig:
     metadata: ModelMetadata
     model: ModelDefinition
     raw: dict[str, Any]
+    prompt_overrides: dict[str, ModelParams] = field(default_factory=dict)
 
     @property
     def relative_path(self) -> str:
@@ -60,6 +61,31 @@ class LoadedModelConfig:
         value = self.raw.get(name, {})
         return value if isinstance(value, dict) else {}
 
+    def resolve_params(self, prompt_type: str | None = None) -> ModelParams:
+        resolved = ModelParams(
+            max_tokens=self.model.params.max_tokens,
+            temperature=self.model.params.temperature,
+            top_p=self.model.params.top_p,
+            reasoning_effort=self.model.params.reasoning_effort,
+        )
+        if prompt_type is None:
+            return resolved
+
+        profile = "reasoning" if "reasoning" in prompt_type else "advanced"
+        for key in (profile, prompt_type):
+            override = self.prompt_overrides.get(key)
+            if override is None:
+                continue
+            if override.max_tokens is not None:
+                resolved.max_tokens = override.max_tokens
+            if override.temperature is not None:
+                resolved.temperature = override.temperature
+            if override.top_p is not None:
+                resolved.top_p = override.top_p
+            if override.reasoning_effort is not None:
+                resolved.reasoning_effort = override.reasoning_effort
+        return resolved
+
 
 def _as_mapping(value: Any, *, field_name: str) -> dict[str, Any]:
     if value is None:
@@ -67,6 +93,15 @@ def _as_mapping(value: Any, *, field_name: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{field_name} must be a mapping")
     return value
+
+
+def _load_model_params(block: dict[str, Any]) -> ModelParams:
+    return ModelParams(
+        max_tokens=block.get("max_tokens"),
+        temperature=block.get("temperature"),
+        top_p=block.get("top_p"),
+        reasoning_effort=block.get("reasoning_effort"),
+    )
 
 
 def _iter_model_config_paths() -> list[Path]:
@@ -131,6 +166,7 @@ def load_model_config(identifier: str) -> LoadedModelConfig:
     metadata_block = _as_mapping(payload.get("metadata"), field_name="metadata")
     model_block = _as_mapping(payload.get("model"), field_name="model")
     params_block = _as_mapping(model_block.get("params"), field_name="model.params")
+    prompt_overrides_block = _as_mapping(payload.get("prompt_overrides"), field_name="prompt_overrides")
 
     name = model_block.get("name")
     client = model_block.get("client")
@@ -158,13 +194,13 @@ def load_model_config(identifier: str) -> LoadedModelConfig:
         base_url=model_block.get("base_url"),
         api_key_env=model_block.get("api_key_env"),
         is_vlm=bool(model_block.get("is_vlm", False)),
-        params=ModelParams(
-            max_tokens=params_block.get("max_tokens"),
-            temperature=params_block.get("temperature"),
-            top_p=params_block.get("top_p"),
-            reasoning_effort=params_block.get("reasoning_effort"),
-        ),
+        params=_load_model_params(params_block),
     )
+    prompt_overrides: dict[str, ModelParams] = {}
+    for key, value in prompt_overrides_block.items():
+        if not isinstance(key, str):
+            raise ValueError(f"prompt_overrides keys must be strings: {path}")
+        prompt_overrides[key] = _load_model_params(_as_mapping(value, field_name=f"prompt_overrides.{key}"))
     return LoadedModelConfig(
         slug=path.stem,
         group=path.parent.name,
@@ -172,4 +208,5 @@ def load_model_config(identifier: str) -> LoadedModelConfig:
         metadata=metadata,
         model=model,
         raw=payload,
+        prompt_overrides=prompt_overrides,
     )

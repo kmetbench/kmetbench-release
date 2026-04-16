@@ -16,5 +16,11 @@ model:
   is_vlm: true
   params:
     max_tokens: null
-    temperature: 0.0
+    temperature: null
     top_p: 0.95
+
+prompt_overrides:
+  advanced:
+    temperature: 0.1
+  reasoning:
+    temperature: 1.0
