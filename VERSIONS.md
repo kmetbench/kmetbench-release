@@ -7,7 +7,7 @@ Tracks the current public version and links for each artifact.
 | Paper | ACL Findings 2026 / OpenReview | https://openreview.net/forum?id=1Gn5pKek8k | 2026-04-16 |
 | Dataset | v1.0.0 | https://huggingface.co/datasets/soyeonbot/K-MetBench | 2026-04-16 |
 | Code | v1.0.0 | https://github.com/kmetbench/kmetbench-release | 2026-04-16 |
-| Leaderboard | v1.0.0 | https://kmetbench.github.io/ | 2026-04-16 |
+| Leaderboard | v1.1.0 | https://kmetbench.github.io/ | 2026-04-16 |
 
 ## Version Update Guide
 
