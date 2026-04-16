@@ -22,7 +22,10 @@ model:
 vllm:
   gpu_memory_utilization: 0.9
   visible_devices: "0,1,2,3"
+  tensor_parallel_size: 4
   port: 8237
   host: "0.0.0.0"
   max_model_len: 16384
-  tensor_parallel_size: 4
+  max_num_seqs: 4
+  image_limit: 4
+  trust_remote_code: true

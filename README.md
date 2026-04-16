@@ -31,7 +31,7 @@ Create the default `uv` environment and run the environment check:
 
 ```bash
 uv sync
-uv run python scripts/setup/env_doctor.py
+uv run python scripts/setup/check_env.py
 ```
 
 <details>
@@ -69,6 +69,13 @@ uv run python scripts/eval.py run --list-model-configs
 
 Fastest path: run against an existing OpenAI-compatible endpoint backed by the
 Qwen3-VL-8B-Thinking config.
+
+Start a matching local `vllm` server from the same model config:
+
+```bash
+bash scripts/setup/serve_vllm_for_kmetbench.sh \
+  --model-config vllm/Qwen_Qwen3-VL-8B-Thinking
+```
 
 ```bash
 # explicit_advanced

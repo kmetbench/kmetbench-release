@@ -14,6 +14,9 @@ Usage:
 ```bash
 python scripts/eval.py run --list-model-configs
 
+bash scripts/setup/serve_vllm_for_kmetbench.sh \
+  --model-config vllm/Qwen_Qwen3-VL-8B-Thinking
+
 python scripts/eval.py run \
   --model-config vllm/Qwen_Qwen3-VL-8B-Thinking \
   --prompt-type advanced \
