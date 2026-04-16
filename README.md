@@ -43,17 +43,10 @@ If you want local `transformers` inference:
 bash scripts/setup/install_uv_profile.sh transformers
 ```
 
-If you are working in a larger private development checkout and also need compatibility with legacy private-only paths:
-
-```bash
-bash scripts/setup/install_uv_profile.sh private-compat
-```
-
 Equivalent `uv` extras:
 
 ```bash
 uv sync --extra transformers
-uv sync --extra private-compat
 uv sync --extra dev
 ```
 </details>
@@ -66,103 +59,85 @@ pip install -r requirements-eval.txt
 
 ### Evaluation
 
-Fastest path: run against an existing OpenAI-compatible endpoint.
+The public eval kit now uses a single entrypoint: `scripts/eval.py`.
+
+List the available model configs:
+
+```bash
+uv run python scripts/eval.py run --list-model-configs
+```
+
+Fastest path: run against an existing OpenAI-compatible endpoint backed by the
+Qwen3-VL-8B-Thinking config.
 
 ```bash
 # explicit_advanced
-uv run python scripts/eval/eval_openai_compatible.py \
-  --model Qwen/Qwen3-VL-8B-Thinking \
-  --base-url http://127.0.0.1:8237/v1 \
+uv run python scripts/eval.py run \
+  --model-config vllm/Qwen_Qwen3-VL-8B-Thinking \
   --prompt-type advanced \
   --data-type explicit
 
 # explicit_reasoning
-uv run python scripts/eval/eval_openai_compatible.py \
-  --model Qwen/Qwen3-VL-8B-Thinking \
-  --base-url http://127.0.0.1:8237/v1 \
+uv run python scripts/eval.py run \
+  --model-config vllm/Qwen_Qwen3-VL-8B-Thinking \
   --prompt-type reasoning \
   --data-type explicit
 ```
 
-Local `transformers` inference:
+Local `transformers` fallback:
 
 ```bash
-uv run python scripts/eval/eval_transformers.py \
-  --model Qwen/Qwen3-VL-8B-Thinking \
+uv run python scripts/eval.py run \
+  --model-config hf/meta-llama_Llama-3.2-90B-Vision-Instruct \
   --prompt-type advanced \
   --data-type explicit
 ```
 
-Local `vllm` serving helper:
+Inspect the resolved dispatch payload before running:
 
 ```bash
-# run this from a separate environment that already has vllm installed
-bash scripts/setup/serve_vllm_for_kmetbench.sh \
-  Qwen/Qwen3-VL-8B-Thinking \
-  advanced \
-  8237 \
-  4
-
-# then evaluate from the uv environment
-uv run python scripts/eval/eval_openai_compatible.py \
-  --model Qwen/Qwen3-VL-8B-Thinking \
-  --base-url http://127.0.0.1:8237/v1 \
-  --prompt-type advanced \
-  --data-type explicit
+uv run python scripts/eval.py run \
+  --model-config vllm/Qwen_Qwen3-VL-8B-Thinking \
+  --prompt-type reasoning \
+  --data-type explicit \
+  --dry-run
 ```
 
-Reasoning judge:
+Reasoning judge stays in the same top-level script:
 
 ```bash
 export GEMINI_API_KEY=...
-uv run python scripts/eval/eval_reasoning_judge.py \
+uv run python scripts/eval.py judge \
   --model Qwen/Qwen3-VL-8B-Thinking
 ```
 
 <details>
 <summary>All CLI arguments</summary>
 
-**`scripts/eval/eval_openai_compatible.py`**
+**`scripts/eval.py run`**
 
 | Argument | Default | Description |
 | --- | --- | --- |
-| `--model` | `Qwen/Qwen3-VL-8B-Thinking` | Model name passed to the OpenAI-compatible API. |
+| `--model-config` | required unless `--list-model-configs` | Config path or identifier under `configs/models/`. |
+| `--list-model-configs` | `False` | Print the available model configs and exit. |
+| `--prompt-type` | `advanced` | Prompt type: `advanced` or `reasoning`. |
+| `--data-type` | `explicit` | Public data type. |
 | `--image-root` | repo default | Override the image root. |
 | `--explicit-data-file` | repo default | Override the explicit benchmark JSON path. |
 | `--output-root` | `experiments/results/evaluation` | Override the output directory for evaluation JSON files. |
-| `--api-key` | `""` | API key for the endpoint. |
-| `--base-url` | `http://0.0.0.0:8192/v1` | OpenAI-compatible endpoint base URL. |
+| `--api-key` | config env fallback | Override the API key instead of using the model config env rule. |
+| `--base-url` | config default | Override the endpoint base URL. |
 | `--num-samples` | `-1` | Limit the number of evaluated samples. |
-| `--temperature` | `0.0` | Sampling temperature. |
-| `--top-p` | `0.95` | Top-p sampling parameter. |
-| `--prompt-type` | `advanced` | Prompt type: `advanced` or `reasoning`. |
-| `--data-type` | `explicit` | Public data type. |
+| `--temperature` | config default or runtime default | Override temperature. |
+| `--top-p` | config default or runtime default | Override top-p. |
 | `--seed` | `42` | Random seed. |
 | `--quiet` | `False` | Suppress per-item output. |
-| `--max-tokens` | prompt-dependent default | Maximum tokens to generate. |
-| `--concurrency` | `1` | Number of concurrent API requests. |
+| `--max-tokens` | config default or prompt runtime default | Maximum tokens to generate. |
+| `--concurrency` | backend default | Override concurrency for OpenAI-compatible runs. |
+| `--device` | config default or `cuda` | Override device for local `transformers` runs. |
+| `--dry-run` | `False` | Print the resolved dispatch payload without running evaluation. |
 
-**`scripts/eval/eval_transformers.py`**
-
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--model` | `Qwen/Qwen3-VL-8B-Thinking` | Hugging Face model name for local `transformers` inference. |
-| `--image-root` | repo default | Override the image root. |
-| `--explicit-data-file` | repo default | Override the explicit benchmark JSON path. |
-| `--output-root` | `experiments/results/evaluation` | Override the output directory for evaluation JSON files. |
-| `--api-key` | `""` | Accepted by the shared parser; not used for local `transformers` runs. |
-| `--base-url` | `http://0.0.0.0:8192/v1` | Accepted by the shared parser; not used for local `transformers` runs. |
-| `--num-samples` | `-1` | Limit the number of evaluated samples. |
-| `--temperature` | `0.0` | Sampling temperature. |
-| `--top-p` | `0.95` | Top-p sampling parameter. |
-| `--prompt-type` | `advanced` | Prompt type: `advanced` or `reasoning`. |
-| `--data-type` | `explicit` | Public data type. |
-| `--seed` | `42` | Random seed. |
-| `--quiet` | `False` | Suppress per-item output. |
-| `--max-tokens` | prompt-dependent default | Maximum tokens to generate. |
-| `--device` | `cuda` | Target device for local inference. |
-
-**`scripts/eval/eval_reasoning_judge.py`**
+**`scripts/eval.py judge`**
 
 | Argument | Default | Description |
 | --- | --- | --- |

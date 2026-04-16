@@ -1,0 +1,22 @@
+metadata:
+  release_date: null
+  model_size: null
+  context_window: null
+  max_output_tokens: null
+  modality: "vlm"
+  is_reasoning: false
+  huggingface_url: ""
+
+model:
+  name: "meta-llama/Llama-3.2-90B-Vision-Instruct"
+  client: "local"
+  engine: "transformers"
+  api_key_env: "EMPTY"
+  is_vlm: true
+  params:
+    max_tokens: null
+    temperature: 0.0
+    top_p: 0.95
+
+transformers:
+  device: "cuda"

@@ -1,0 +1,28 @@
+metadata:
+  release_date: null
+  model_size: null
+  context_window: null
+  max_output_tokens: null
+  modality: "vlm"
+  is_reasoning: true
+  huggingface_url: ""
+
+model:
+  name: "Qwen/Qwen3-VL-8B-Thinking"
+  client: "openai"
+  engine: "vllm"
+  base_url: "http://127.0.0.1:8237/v1"
+  api_key_env: "EMPTY"
+  is_vlm: true
+  params:
+    max_tokens: null
+    temperature: 0.0
+    top_p: 0.95
+
+vllm:
+  gpu_memory_utilization: 0.9
+  visible_devices: "0,1,2,3"
+  port: 8237
+  host: "0.0.0.0"
+  max_model_len: 16384
+  tensor_parallel_size: 4

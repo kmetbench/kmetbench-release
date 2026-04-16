@@ -1,0 +1,20 @@
+metadata:
+  release_date: null
+  model_size: null
+  context_window: null
+  max_output_tokens: null
+  modality: "vlm"
+  is_reasoning: true
+  huggingface_url: ""
+
+model:
+  name: "gemini-2.5-pro"
+  client: "openai"
+  engine: "api"
+  base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
+  api_key_env: "GEMINI_API_KEY"
+  is_vlm: true
+  params:
+    max_tokens: null
+    temperature: 0.0
+    top_p: 0.95

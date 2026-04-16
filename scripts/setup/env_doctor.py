@@ -75,18 +75,18 @@ def main() -> int:
         "modules": {
             "openai": has_module("openai"),
             "dotenv": has_module("dotenv"),
+            "yaml": has_module("yaml"),
             "tqdm": has_module("tqdm"),
             "torch": has_module("torch"),
             "transformers": has_module("transformers"),
             "PIL": has_module("PIL"),
-            "google.genai": has_module("google.genai"),
             "vllm": has_module("vllm"),
         },
         "paths": {
             "explicit_data": check_path(REPO_ROOT / "data" / "merged" / "k_metbench.json"),
-            "implicit_data": check_path(REPO_ROOT / "data" / "merged" / "k_metbench_implicit.json"),
             "image_root": check_path(REPO_ROOT / "data" / "shuffled"),
-            "public_eval_entrypoint": check_path(REPO_ROOT / "scripts" / "eval" / "eval_openai_compatible.py"),
+            "public_eval_entrypoint": check_path(REPO_ROOT / "scripts" / "eval.py"),
+            "model_config_root": check_path(REPO_ROOT / "configs" / "models"),
         },
         "env": {
             "GEMINI_API_KEY_set": bool(os.getenv("GEMINI_API_KEY")),

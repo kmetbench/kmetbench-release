@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "openai>=1.0.0",
     "python-dotenv>=1.0.0",
+    "PyYAML>=6.0",
     "tqdm>=4.66.0",
 ]
 
@@ -17,9 +18,6 @@ transformers = [
     "Pillow>=10.0.0",
     "torch>=2.6.0",
     "transformers>=4.52.0",
-]
-private-compat = [
-    "google-genai>=1.73.0",
 ]
 dev = [
     "pytest>=8.0.0",

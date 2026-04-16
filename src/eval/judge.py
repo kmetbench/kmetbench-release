@@ -1,30 +1,23 @@
-#!/usr/bin/env python3
-
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 import json
 import os
-import sys
 import time
 from dataclasses import asdict
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from src.eval.api_clients import OpenAIClient
-from src.eval.config import get_system_prompt, resolve_dataset_path, resolve_results_root
-from src.eval.data import load_items
-from src.eval.models import ReasoningEvaluationResult
-from src.eval.parsing import (
+from .api_clients import OpenAIClient
+from .config import get_system_prompt, resolve_dataset_path, resolve_results_root
+from .data import load_items
+from .models import ReasoningEvaluationResult
+from .parsing import (
     evaluate_reasoning_scores,
     extract_reasoning_evaluation_info,
     get_safe_name,
 )
-from src.eval.public_protocol import (
+from .public_protocol import (
     build_public_metric_row,
     build_public_protocol_block,
     format_public_metric_summary,
@@ -259,37 +252,55 @@ def main(argv: list[str] | None = None) -> int:
             print("-" * 60)
             print(f"Q[{item_id}] pred={result.predicted_answer} gold={result.correct_answer} match={result.is_correct}")
             print(f"Judge total={result.total} factual={result.factual} logical={result.logical} depth={result.depth} clarity={result.clarity}")
-            print(f"Judge latency: {elapsed:.2f}s")
+            print(f"Elapsed={elapsed:.2f}s")
+            if result.comment:
+                print(f"Comment: {result.comment}")
+            if result.factual_error:
+                print(f"Factual errors: {result.factual_error}")
+            print("-" * 60)
 
     metrics = evaluate_reasoning_scores(model_results)
     timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_model_name = get_safe_name(args.model)
-    output_file = out_dir / f"{safe_model_name}_seed{args.seed}_{timestamp}.json"
-    benchmark_name = f"{args.data_type}_{args.prompt_type}"
+    benchmark_name = out_dir_name
     public_protocol = build_public_protocol_block(metrics, benchmark=benchmark_name)
-
+    safe_model_name = get_safe_name(args.model)
+    suffix = "_wo_rationale" if args.wo_rationale else ""
+    output_file = out_dir / f"{safe_model_name}_seed{args.seed}_{timestamp}{suffix}.json"
     payload = {
-        "model_key": str(predictions_payload.get("model_key") or args.model),
-        "model_name": str(predictions_payload.get("model_name") or args.model),
+        "model_key": args.model,
+        "evaluator": args.evaluator,
         "timestamp": timestamp,
         "metrics": metrics,
         "public_protocol": public_protocol,
         "evaluation_settings": {
+            "predictions_path": str(predictions_path),
             "num_samples": len(model_results),
-            "evaluator_model": args.evaluator,
+            "temperature": args.temperature,
+            "top_p": args.top_p,
             "base_url": args.base_url,
             "seed": args.seed,
             "prompt_type": args.prompt_type,
             "data_type": args.data_type,
-            "predictions_file": str(predictions_path),
             "wo_rationale": args.wo_rationale,
         },
         "results": [asdict(result) for result in model_results],
     }
     with output_file.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
+
+    with (out_dir / "model_accuracies.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps({
+            "model": args.model,
+            "accuracy": metrics["accuracy"],
+            "reasoning_total": metrics["reasoning_total"],
+            "factual": metrics["factual"],
+            "logical": metrics["logical"],
+            "depth": metrics["depth"],
+            "clarity": metrics["clarity"],
+        }, ensure_ascii=False) + "\n")
+
     public_metric_row = build_public_metric_row(
-        model_key=str(predictions_payload.get("model_key") or args.model),
+        model_key=args.model,
         benchmark=benchmark_name,
         timestamp=timestamp,
         metrics=metrics,
@@ -297,11 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     with (out_dir / "model_public_metrics.jsonl").open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(public_metric_row, ensure_ascii=False) + "\n")
 
-    print(f"Judged {len(model_results)} items.")
-    print(format_public_metric_summary(public_protocol, correct=metrics["correct"], total=metrics["total"]))
+    print(f"\n{args.model} reasoning judge results:")
+    print(f"  {format_public_metric_summary(public_protocol, correct=metrics['correct'], total=metrics['total'])}")
     print(f"Results saved to: {output_file}")
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
