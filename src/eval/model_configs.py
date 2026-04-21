@@ -7,9 +7,8 @@ from typing import Any
 import yaml
 
 from .parsing import get_safe_name
+from src.utils.repo_layout import MODEL_CONFIG_ROOT
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL_CONFIG_ROOT = REPO_ROOT / "configs" / "models"
 MODEL_CONFIG_GROUPS = ("api", "hf", "vllm")
 
 

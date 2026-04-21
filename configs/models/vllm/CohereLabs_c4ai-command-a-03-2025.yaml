@@ -1,0 +1,34 @@
+metadata:
+  release_date: null
+  model_size: 111
+  context_window: null
+  max_output_tokens: null
+  modality: "llm"
+  is_reasoning: false
+  huggingface_url: "https://huggingface.co/CohereLabs/c4ai-command-a-03-2025"
+
+model:
+  name: "CohereLabs/c4ai-command-a-03-2025"
+  client: "openai"
+  engine: "vllm"
+  base_url: "http://127.0.0.1:8254/v1"
+  api_key_env: "EMPTY"
+  is_vlm: false
+  params:
+    max_tokens: null
+    temperature: null
+    top_p: 0.95
+
+prompt_overrides:
+  advanced:
+    temperature: 0.1
+  reasoning:
+    temperature: 1.0
+
+vllm:
+  gpu_memory_utilization: 0.95
+  visible_devices: "0,1,2,3,4,5,6,7"
+  port: 8254
+  host: "0.0.0.0"
+  max_model_len: 8192
+  tensor_parallel_size: 8

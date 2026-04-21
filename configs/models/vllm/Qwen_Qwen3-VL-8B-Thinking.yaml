@@ -1,17 +1,17 @@
 metadata:
   release_date: null
-  model_size: null
+  model_size: 8
   context_window: null
   max_output_tokens: null
   modality: "vlm"
   is_reasoning: true
-  huggingface_url: ""
+  huggingface_url: "https://huggingface.co/Qwen/Qwen3-VL-8B-Thinking"
 
 model:
   name: "Qwen/Qwen3-VL-8B-Thinking"
   client: "openai"
   engine: "vllm"
-  base_url: "http://127.0.0.1:8237/v1"
+  base_url: "http://127.0.0.1:8232/v1"
   api_key_env: "EMPTY"
   is_vlm: true
   params:
@@ -26,12 +26,9 @@ prompt_overrides:
     temperature: 1.0
 
 vllm:
-  gpu_memory_utilization: 0.9
-  visible_devices: "0,1,2,3"
-  tensor_parallel_size: 4
-  port: 8237
+  gpu_memory_utilization: 0.95
+  visible_devices: "0"
+  port: 8232
   host: "0.0.0.0"
   max_model_len: 16384
-  max_num_seqs: 4
-  image_limit: 4
-  trust_remote_code: true
+  tensor_parallel_size: 1

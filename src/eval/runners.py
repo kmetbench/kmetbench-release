@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from types import MethodType
 from typing import Any
 
 from .api_clients import ChatGPTClient, OpenAIClient
@@ -11,6 +12,7 @@ from .transformers_utils import (
     convert_openai_to_skt_format,
     get_ax4_answer,
     get_exaone45_answer,
+    get_hyperclovax_answer,
     get_llama32_answer,
     get_text_causal_lm_answer,
 )
@@ -89,7 +91,20 @@ class TransformersRunner:
 
     def _prepare_helpers(self) -> None:
         import torch
+        import transformers.processing_utils as processing_utils
         from transformers import AutoModelForCausalLM, AutoProcessor, AutoTokenizer, MllamaForConditionalGeneration
+
+        if not hasattr(processing_utils, "_validate_images_text_input_order"):
+            def _validate_images_text_input_order(images: Any, text: Any) -> tuple[Any, Any]:
+                return images, text
+
+            processing_utils._validate_images_text_input_order = _validate_images_text_input_order
+
+        if not hasattr(processing_utils, "ChatTemplateLoadKwargs"):
+            fallback_kwargs = getattr(processing_utils, "ProcessorChatTemplateKwargs", None)
+            if fallback_kwargs is None:
+                fallback_kwargs = getattr(processing_utils, "AllKwargsForChatTemplate")
+            processing_utils.ChatTemplateLoadKwargs = fallback_kwargs
 
         self._torch = torch
         self._AutoTokenizer = AutoTokenizer
@@ -100,6 +115,7 @@ class TransformersRunner:
         self._convert_openai_to_skt_format = convert_openai_to_skt_format
         self._get_llama32_answer = get_llama32_answer
         self._get_ax4_answer = get_ax4_answer
+        self._get_hyperclovax_answer = get_hyperclovax_answer
         self._get_exaone45_answer = get_exaone45_answer
         self._get_text_causal_lm_answer = get_text_causal_lm_answer
 
@@ -135,16 +151,76 @@ class TransformersRunner:
             )
             file_path.write_text(content.replace(old_import, new_import, 1), encoding="utf-8")
 
+    def _patch_ax4_generation(self) -> None:
+        if self.model is None or getattr(self.model, "_kmetbench_ax4_generation_patched", False):
+            return
+
+        def patched_prepare_inputs_for_generation(
+            model_self,
+            input_ids,
+            past_key_values=None,
+            inputs_embeds=None,
+            pixel_values=None,
+            image_sizes=None,
+            attention_mask=None,
+            cache_position=None,
+            logits_to_keep=None,
+            **kwargs,
+        ):
+            model_inputs = model_self.language_model.prepare_inputs_for_generation(
+                input_ids,
+                past_key_values=past_key_values,
+                inputs_embeds=inputs_embeds,
+                attention_mask=attention_mask,
+                cache_position=cache_position,
+                logits_to_keep=logits_to_keep,
+                **kwargs,
+            )
+
+            should_forward_image_inputs = cache_position is None
+            if not should_forward_image_inputs and hasattr(cache_position, "__len__"):
+                should_forward_image_inputs = len(cache_position) > 0 and cache_position[0] == 0
+            if not should_forward_image_inputs and past_key_values is None:
+                should_forward_image_inputs = True
+
+            if should_forward_image_inputs:
+                model_inputs["pixel_values"] = pixel_values
+                model_inputs["image_sizes"] = image_sizes
+
+            return model_inputs
+
+        self.model.prepare_inputs_for_generation = MethodType(patched_prepare_inputs_for_generation, self.model)
+        self.model._kmetbench_ax4_generation_patched = True
+
+    def _resolve_local_model_source(self) -> tuple[str, dict[str, Any]]:
+        model_source = self.model_name
+        local_only_kwargs: dict[str, Any] = {}
+        try:
+            from huggingface_hub import snapshot_download
+
+            model_source = snapshot_download(self.model_name, local_files_only=True)
+            local_only_kwargs["local_files_only"] = True
+        except Exception:
+            model_source = self.model_name
+        return model_source, local_only_kwargs
+
     def _load_model(self) -> None:
         model_name_lower = self.model_name.lower()
         if model_name_lower == "meta-llama/llama-3.2-90b-vision-instruct":
             self.mode = "llama32"
-            self.tokenizer = self._AutoTokenizer.from_pretrained(self.model_name, use_fast=True)
+            model_source, local_only_kwargs = self._resolve_local_model_source()
+            self.tokenizer = self._AutoTokenizer.from_pretrained(
+                model_source,
+                use_fast=True,
+                trust_remote_code=True,
+                **local_only_kwargs,
+            )
             self.model = self._MllamaForConditionalGeneration.from_pretrained(
-                self.model_name,
+                model_source,
                 torch_dtype=self._torch.bfloat16 if self._torch.cuda.is_available() else self._torch.float32,
                 device_map="auto",
                 trust_remote_code=True,
+                **local_only_kwargs,
             )
             if self.tokenizer.pad_token_id is None:
                 self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
@@ -152,28 +228,46 @@ class TransformersRunner:
 
         if model_name_lower == "skt/a.x-4.0-vl-light":
             self.mode = "ax4"
+            model_source, local_only_kwargs = self._resolve_local_model_source()
             self._patch_ax4_cached_modules()
-            self.processor = self._AutoProcessor.from_pretrained(self.model_name, trust_remote_code=True)
+            self.processor = self._AutoProcessor.from_pretrained(
+                model_source,
+                trust_remote_code=True,
+                **local_only_kwargs,
+            )
             self.model = self._AutoModelForCausalLM.from_pretrained(
-                self.model_name,
+                model_source,
                 torch_dtype=self._torch.bfloat16 if self._torch.cuda.is_available() else self._torch.float32,
                 device_map="auto",
                 trust_remote_code=True,
+                **local_only_kwargs,
+            )
+            self._patch_ax4_generation()
+            return
+
+        if model_name_lower == "naver-hyperclovax/hyperclovax-seed-vision-instruct-3b":
+            self.mode = "hyperclovax"
+            model_source, local_only_kwargs = self._resolve_local_model_source()
+            self.processor = self._AutoProcessor.from_pretrained(
+                model_source,
+                trust_remote_code=True,
+                **local_only_kwargs,
+            )
+            self.model = self._AutoModelForCausalLM.from_pretrained(
+                model_source,
+                torch_dtype=self._torch.bfloat16 if self._torch.cuda.is_available() else self._torch.float32,
+                device_map="auto",
+                trust_remote_code=True,
+                low_cpu_mem_usage=True,
+                **local_only_kwargs,
             )
             return
 
         if model_name_lower == "lgai-exaone/exaone-4.5-33b":
-            from huggingface_hub import snapshot_download
             from transformers import Exaone4_5_ForConditionalGeneration
 
             self.mode = "exaone45"
-            model_source = self.model_name
-            local_only_kwargs: dict[str, Any] = {}
-            try:
-                model_source = snapshot_download(self.model_name, local_files_only=True)
-                local_only_kwargs["local_files_only"] = True
-            except Exception:
-                model_source = self.model_name
+            model_source, local_only_kwargs = self._resolve_local_model_source()
 
             self.processor = self._AutoProcessor.from_pretrained(
                 model_source,
@@ -254,6 +348,17 @@ class TransformersRunner:
                 processor=self.processor,
                 model=self.model,
                 images=pil_images,
+                max_new_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                device=self.device,
+            )
+
+        if self.mode == "hyperclovax":
+            return self._get_hyperclovax_answer(
+                messages=messages,
+                processor=self.processor,
+                model=self.model,
                 max_new_tokens=max_tokens,
                 temperature=temperature,
                 top_p=top_p,

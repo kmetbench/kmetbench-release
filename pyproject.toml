@@ -1,6 +1,6 @@
 [project]
 name = "kmetbench-release"
-version = "0.1.0"
+version = "1.1.0"
 description = "Public evaluation toolkit for K-MetBench."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,6 +18,9 @@ transformers = [
     "Pillow>=10.0.0",
     "torch>=2.6.0",
     "transformers>=4.52.0",
+]
+private-compat = [
+    "google-genai>=1.73.0",
 ]
 dev = [
     "pytest>=8.0.0",

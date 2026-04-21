@@ -10,6 +10,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Iterable
 
+from src.utils.repo_layout import EVALUATION_INDEX_ROOT
+
 from .config import (
     get_default_max_tokens,
     get_system_prompt,
@@ -78,6 +80,11 @@ def _set_seed(seed: int) -> None:
         pass
 
 
+def _ensure_dir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _build_parser(
     backend: str,
     *,
@@ -94,7 +101,7 @@ def _build_parser(
         raise ValueError(f"default_data_type must be one of {resolved_data_choices}")
 
     parser = argparse.ArgumentParser(description="K-MetBench evaluation entrypoint")
-    parser.add_argument("--model", type=str, default="Qwen/Qwen3-VL-8B-Thinking")
+    parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3_5-8B-Instruct")
     parser.add_argument("--image-root", type=str, default=None, help="Image root. Defaults to repo-relative data/shuffled.")
     if "explicit" in resolved_data_choices:
         parser.add_argument("--explicit-data-file", type=str, default=None, help="Override explicit dataset path.")
@@ -108,7 +115,7 @@ def _build_parser(
         "--output-root",
         type=str,
         default=None,
-        help="Evaluation output root. Defaults to experiments/results/evaluation.",
+        help="Evaluation output root. Defaults to results/evaluation.",
     )
     parser.add_argument("--api-key", type=str, default="")
     parser.add_argument("--base-url", type=str, default="http://0.0.0.0:8192/v1")
@@ -158,7 +165,7 @@ def _resolve_runtime(args: argparse.Namespace) -> tuple[Path, Path, Path, str, l
     results_root = resolve_results_root(args.output_root)
     prompt = get_system_prompt(args.prompt_type)
 
-    items = load_items(dataset_path, num_samples=-1)
+    items = load_items(dataset_path, num_samples=-1, data_type=args.data_type)
     print(f"Loaded {len(items)} items from {dataset_path}")
     filtered_items = filter_items_for_run(items, args.prompt_type, args.model)
     if args.num_samples != -1:
@@ -271,7 +278,8 @@ def _save_run(
         "korean": metrics["korean"],
         "non_korean": metrics["non_korean"],
     }
-    with (out_dir / "model_accuracies.jsonl").open("a", encoding="utf-8") as handle:
+    index_dir = _ensure_dir(EVALUATION_INDEX_ROOT / benchmark_name)
+    with (index_dir / "model_accuracies.jsonl").open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(model_accuracy, ensure_ascii=False) + "\n")
     public_metric_row = build_public_metric_row(
         model_key=args.model,
@@ -279,7 +287,7 @@ def _save_run(
         timestamp=timestamp,
         metrics=metrics,
     )
-    with (out_dir / "model_public_metrics.jsonl").open("a", encoding="utf-8") as handle:
+    with (index_dir / "model_public_metrics.jsonl").open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(public_metric_row, ensure_ascii=False) + "\n")
 
     print(f"\n{args.model} Results:")
@@ -484,30 +492,6 @@ def main_public_openai_compatible(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     return asyncio.run(_run_openai_compatible_async(args))
-
-
-def main_public_chatgpt(argv: list[str] | None = None) -> int:
-    parser = _build_parser(
-        BACKEND_CHATGPT,
-        prompt_choices=PUBLIC_PROMPT_CHOICES,
-        data_choices=PUBLIC_DATA_CHOICES,
-        default_prompt_type="advanced",
-        default_data_type="explicit",
-    )
-    args = parser.parse_args(argv)
-    return _run_chatgpt(args, thinking=False, filename_tag="_multimodal")
-
-
-def main_public_chatgpt_thinking(argv: list[str] | None = None) -> int:
-    parser = _build_parser(
-        BACKEND_CHATGPT_THINKING,
-        prompt_choices=PUBLIC_PROMPT_CHOICES,
-        data_choices=PUBLIC_DATA_CHOICES,
-        default_prompt_type="advanced",
-        default_data_type="explicit",
-    )
-    args = parser.parse_args(argv)
-    return _run_chatgpt(args, thinking=True, filename_tag="_multimodal_Thinking")
 
 
 def main_public_transformers(argv: list[str] | None = None) -> int:

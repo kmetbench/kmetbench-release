@@ -1,0 +1,26 @@
+metadata:
+  release_date: null
+  model_size: null
+  context_window: null
+  max_output_tokens: null
+  modality: "vlm"
+  is_reasoning: true
+  huggingface_url: ""
+
+model:
+  name: "gpt-5.2"
+  client: "openai"
+  engine: "api"
+  base_url: "https://api.openai.com/v1"
+  api_key_env: "OPENAI_API_KEY"
+  is_vlm: true
+  params:
+    max_tokens: null
+    temperature: null
+    top_p: 0.95
+
+prompt_overrides:
+  advanced:
+    temperature: 0.1
+  reasoning:
+    temperature: 1.0

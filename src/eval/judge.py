@@ -156,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"No prediction rows found in {predictions_path}")
         return 1
 
-    input_items = load_items(dataset_path, num_samples=-1)
+    input_items = load_items(dataset_path, num_samples=-1, data_type=args.data_type)
     input_by_id = {item.id: item for item in input_items}
 
     out_dir_name = f"{args.data_type}_{args.prompt_type}"
@@ -260,55 +260,35 @@ def main(argv: list[str] | None = None) -> int:
             print("-" * 60)
 
     metrics = evaluate_reasoning_scores(model_results)
+    benchmark_name = f"{args.data_type}_{args.prompt_type}"
+    protocol_block = build_public_protocol_block(metrics, benchmark=benchmark_name)
+
     timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    benchmark_name = out_dir_name
-    public_protocol = build_public_protocol_block(metrics, benchmark=benchmark_name)
     safe_model_name = get_safe_name(args.model)
-    suffix = "_wo_rationale" if args.wo_rationale else ""
-    output_file = out_dir / f"{safe_model_name}_seed{args.seed}_{timestamp}{suffix}.json"
+    output_path = out_dir / f"{safe_model_name}_seed{args.seed}_{timestamp}.json"
+
     payload = {
         "model_key": args.model,
+        "data_type": args.data_type,
+        "prompt_type": args.prompt_type,
         "evaluator": args.evaluator,
-        "timestamp": timestamp,
+        "predictions_path": str(predictions_path),
+        "created_at": dt.datetime.now().isoformat(),
+        "seed": args.seed,
+        "num_samples": len(model_results),
         "metrics": metrics,
-        "public_protocol": public_protocol,
-        "evaluation_settings": {
-            "predictions_path": str(predictions_path),
-            "num_samples": len(model_results),
-            "temperature": args.temperature,
-            "top_p": args.top_p,
-            "base_url": args.base_url,
-            "seed": args.seed,
-            "prompt_type": args.prompt_type,
-            "data_type": args.data_type,
-            "wo_rationale": args.wo_rationale,
-        },
+        "protocol": protocol_block,
         "results": [asdict(result) for result in model_results],
     }
-    with output_file.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
+    output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    with (out_dir / "model_accuracies.jsonl").open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps({
-            "model": args.model,
-            "accuracy": metrics["accuracy"],
-            "reasoning_total": metrics["reasoning_total"],
-            "factual": metrics["factual"],
-            "logical": metrics["logical"],
-            "depth": metrics["depth"],
-            "clarity": metrics["clarity"],
-        }, ensure_ascii=False) + "\n")
-
-    public_metric_row = build_public_metric_row(
-        model_key=args.model,
-        benchmark=benchmark_name,
-        timestamp=timestamp,
-        metrics=metrics,
-    )
-    with (out_dir / "model_public_metrics.jsonl").open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(public_metric_row, ensure_ascii=False) + "\n")
-
-    print(f"\n{args.model} reasoning judge results:")
-    print(f"  {format_public_metric_summary(public_protocol, correct=metrics['correct'], total=metrics['total'])}")
-    print(f"Results saved to: {output_file}")
+    if model_results:
+        metric_row = build_public_metric_row(
+            model_key=args.model,
+            benchmark=benchmark_name,
+            timestamp=timestamp,
+            metrics=metrics,
+        )
+        print(format_public_metric_summary(protocol_block))
+    print(f"Saved reasoning evaluation results to {output_path}")
     return 0

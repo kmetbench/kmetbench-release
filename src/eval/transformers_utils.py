@@ -87,6 +87,60 @@ def get_ax4_answer(
     return response[0].strip() if response[0] else ""
 
 
+def get_hyperclovax_answer(
+    messages,
+    processor,
+    model,
+    max_new_tokens=2048,
+    temperature=0.0,
+    top_p=0.95,
+    repetition_penalty=1.0,
+    device="cuda",
+):
+    import torch
+
+    hcx_messages = convert_openai_to_hyperclovax_format(messages)
+    model_inputs = processor.apply_chat_template(
+        hcx_messages,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt",
+        add_generation_prompt=True,
+    )
+    if hasattr(model_inputs, "to"):
+        model_inputs = model_inputs.to(device=device)
+    else:
+        model_inputs = {key: value.to(device) for key, value in model_inputs.items()}
+
+    input_ids = model_inputs["input_ids"]
+    prompt_length = input_ids.shape[-1]
+    generation_kwargs = {
+        "max_new_tokens": max_new_tokens,
+        "do_sample": temperature > 0.0,
+        "top_p": top_p,
+        "temperature": temperature,
+        "repetition_penalty": repetition_penalty,
+    }
+    if not generation_kwargs["do_sample"]:
+        generation_kwargs.pop("top_p", None)
+        generation_kwargs.pop("temperature", None)
+
+    with torch.no_grad():
+        output_ids = model.generate(**model_inputs, **generation_kwargs)
+
+    if output_ids.dim() == 1:
+        output_ids = output_ids.unsqueeze(0)
+    generated_tokens = output_ids[:, prompt_length:]
+    decoded = processor.batch_decode(
+        generated_tokens,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=False,
+    )
+    if not decoded:
+        return ""
+    return decoded[0].strip()
+
+
 def _flatten_message_content(content: Any) -> str:
     if isinstance(content, str):
         return content.strip()
@@ -273,6 +327,50 @@ def convert_openai_to_skt_format(openai_messages: list[dict[str, Any]]) -> tuple
             skt_messages.append(message)
 
     return skt_messages, pil_images
+
+
+def convert_openai_to_hyperclovax_format(openai_messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    hcx_messages: list[dict[str, Any]] = []
+    image_index = 0
+
+    for message in openai_messages:
+        role = str(message.get("role", "user"))
+        content = message.get("content")
+
+        if isinstance(content, list):
+            new_content: list[dict[str, Any]] = []
+            for item in content:
+                if not isinstance(item, dict):
+                    text = str(item).strip()
+                    if text:
+                        new_content.append({"type": "text", "text": text})
+                    continue
+                if item.get("type") == "text":
+                    text = str(item.get("text", "") or "")
+                    if text:
+                        new_content.append({"type": "text", "text": text})
+                    continue
+                if item.get("type") == "image_url":
+                    image_url = item.get("image_url", {})
+                    url = image_url.get("url") if isinstance(image_url, dict) else None
+                    if url:
+                        new_content.append(
+                            {
+                                "type": "image",
+                                "filename": f"image_{image_index}.png",
+                                "image": url,
+                            }
+                        )
+                        image_index += 1
+            if new_content:
+                hcx_messages.append({"role": role, "content": new_content})
+            continue
+
+        text = _flatten_message_content(content)
+        if text:
+            hcx_messages.append({"role": role, "content": [{"type": "text", "text": text}]})
+
+    return hcx_messages
 
 
 def _decode_base64_to_pil(base64_url: str) -> Image.Image | None:

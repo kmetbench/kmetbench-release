@@ -1,0 +1,34 @@
+metadata:
+  release_date: null
+  model_size: 0.5
+  context_window: null
+  max_output_tokens: null
+  modality: "llm"
+  is_reasoning: false
+  huggingface_url: "https://huggingface.co/naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-0.5B"
+
+model:
+  name: "naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-0.5B"
+  client: "openai"
+  engine: "vllm"
+  base_url: "http://127.0.0.1:8208/v1"
+  api_key_env: "EMPTY"
+  is_vlm: false
+  params:
+    max_tokens: null
+    temperature: null
+    top_p: 0.95
+
+prompt_overrides:
+  advanced:
+    temperature: 0.1
+  reasoning:
+    temperature: 1.0
+
+vllm:
+  gpu_memory_utilization: 0.8
+  visible_devices: "0"
+  port: 8208
+  host: "0.0.0.0"
+  max_model_len: 8192
+  tensor_parallel_size: 1

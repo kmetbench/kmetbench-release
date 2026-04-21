@@ -3,14 +3,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+from src.utils.repo_layout import CANONICAL_DATA_FILE, EVALUATION_RESULTS_ROOT, IMAGE_ROOT
 
-DEFAULT_EXPLICIT_DATA_FILE = REPO_ROOT / "data" / "merged" / "k_metbench.json"
-DEFAULT_IMPLICIT_DATA_FILE = (
-    REPO_ROOT / "data" / "merged" / "k_metbench_implicit.json"
-)
-DEFAULT_IMAGE_ROOT = REPO_ROOT / "data" / "shuffled"
-DEFAULT_RESULTS_ROOT = REPO_ROOT / "experiments" / "results" / "evaluation"
+DEFAULT_EXPLICIT_DATA_FILE = CANONICAL_DATA_FILE
+DEFAULT_IMPLICIT_DATA_FILE = DEFAULT_EXPLICIT_DATA_FILE
+DEFAULT_IMAGE_ROOT = IMAGE_ROOT
+DEFAULT_RESULTS_ROOT = EVALUATION_RESULTS_ROOT
 
 PROMPT_RUNTIME_DEFAULTS: dict[str, dict[str, int]] = {
     "advanced": {

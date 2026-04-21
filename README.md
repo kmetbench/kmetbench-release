@@ -2,36 +2,58 @@
 
 [![Paper](https://img.shields.io/badge/Paper-ACL%202026-4285F4.svg?style=for-the-badge)](https://openreview.net/forum?id=1Gn5pKek8k)
 [![Dataset](https://img.shields.io/badge/Dataset-HuggingFace-EA4335.svg?style=for-the-badge)](https://huggingface.co/datasets/soyeonbot/K-MetBench)
-[![Code](https://img.shields.io/badge/Code-GitHub-FBBC05.svg?style=for-the-badge)](https://github.com/kmetbench/kmetbench-release)
+[![Code](https://img.shields.io/badge/Code-GitHub-FBBC05.svg?style=for-the-badge)](https://github.com/kmetbench/MeteorQA)
 [![Citation](https://img.shields.io/badge/Citation-BibTeX-34A853.svg?style=for-the-badge)](#citation)
 
-This repository contains the public evaluation kit for K-MetBench, a benchmark for Korean meteorology exam questions spanning expert reasoning, geo-cultural alignment, and multimodal weather understanding.
+This repository is the private canonical K-MetBench workspace. Use it to curate
+data, run internal experiments, build public summaries, and export reviewed
+artifacts to the public release repos.
 
-K-MetBench evaluates 1,774 questions drawn from the Korean National Meteorological Engineer Examination. The benchmark includes 82 multimodal questions, 141 reasoning questions with expert-verified rationales, and 73 Korean-specific questions across five official subject areas: Weather Analysis and Forecast Theory (P1), Meteorological Observation Methods (P2), Atmospheric Dynamics (P3), Climatology (P4), and Atmospheric Physics (P5).
+Public destinations:
 
-The public protocol in this repository covers two prediction settings, `explicit_advanced` and `explicit_reasoning`, followed by the public judge output `explicit_reasoning_evaluation`.
+- Public eval kit: `https://github.com/kmetbench/kmetbench-release`
+- Public dataset: `https://huggingface.co/datasets/soyeonbot/K-MetBench`
+- Public leaderboard: `https://kmetbench.github.io/`
+
+K-MetBench evaluates 1,774 questions drawn from the Korean National
+Meteorological Engineer Examination. The benchmark includes 82 multimodal
+questions, 141 reasoning questions with expert-verified rationales, and 73
+Korean-specific questions across five official subject areas: Weather Analysis
+and Forecast Theory (P1), Meteorological Observation Methods (P2), Atmospheric
+Dynamics (P3), Climatology (P4), and Atmospheric Physics (P5).
+
+## Repo Roles
+
+- `MeteorQA`: private canonical repo for code, preprocessing, experiments,
+  release tooling, and staging artifacts
+- `kmetbench-release`: public eval-kit repo only
+- Hugging Face dataset repo: public dataset export
+- `kmetbench.github.io`: public leaderboard export
+
+Read these first when preparing a release:
+
+- [docs/repo_roles.md](docs/repo_roles.md)
+- [docs/preprocess_compatibility.md](docs/preprocess_compatibility.md)
+- [docs/release_policy.md](docs/release_policy.md)
+- [docs/public_export_allowlist.md](docs/public_export_allowlist.md)
+- [docs/release_checklist.md](docs/release_checklist.md)
 
 ## Updates
 
-- **[2026/04/16]** Public release repository trimmed to the evaluation kit only. Internal planning documents, export pipelines, and release-only summaries were removed from the public tree.
+- **[2026/04/21]** Finalized the `v1.1.0` repair release metadata: the
+  canonical dataset filename is `data/kmetbench.json`, the repair manifest now
+  points to retained `repair_v1_1_0` assets, and the public release trackers
+  were prepared for the refreshed dataset/code sync.
+- **[2026/04/16]** Added private/public repo-role docs, release checklist, and
+  local push guards for `MeteorQA` and `kmetbench-release`.
 
-> Use GitHub Releases for versioned snapshots of the public eval kit.
->
-> See [VERSIONS.md](./VERSIONS.md) for the current artifact tracker.
-
-## Leaderboard
-
-Visit the [K-MetBench leaderboard](https://kmetbench.github.io/) for the public model table, scaling plots, and citation block used in the website release.
-
-## Getting Started
-
-### Installation
+## Admin Quickstart
 
 Create the default `uv` environment and run the environment check:
 
 ```bash
 uv sync
-uv run python scripts/setup/check_env.py
+uv run python scripts/setup/env_doctor.py
 ```
 
 <details>
@@ -43,10 +65,17 @@ If you want local `transformers` inference:
 bash scripts/setup/install_uv_profile.sh transformers
 ```
 
+If you also need compatibility with the legacy private path:
+
+```bash
+bash scripts/setup/install_uv_profile.sh private-compat
+```
+
 Equivalent `uv` extras:
 
 ```bash
 uv sync --extra transformers
+uv sync --extra private-compat
 uv sync --extra dev
 ```
 </details>
@@ -57,60 +86,97 @@ If `uv` is unavailable, use:
 pip install -r requirements-eval.txt
 ```
 
-### Evaluation
+## Preprocess Layout
 
-The public eval kit now uses a single entrypoint: `scripts/eval.py`.
+Canonical private preprocessing now uses two supported code surfaces plus a
+manual-review notebook area:
 
-List the available model configs:
+- `scripts/preprocess/`: stable CLI surface for operators
+- `src/preprocess/`: canonical importable implementations
+- `notebooks/preprocess/`: exploratory notebooks used for manual inspection and
+  curation checks
+
+For new work, start from `scripts/preprocess/` or import from `src/preprocess/`.
+The legacy `src/preprocessing/` wrapper tree has been retired.
+
+The canonical private preprocessing dataset is:
+
+- `data/kmetbench.json`
+
+Archive-only snapshots and metadata live under `data/archive/`:
+
+- `data/archive/` for release snapshots such as
+  `kmetbench_v1_0_0_260416.json`, `kmetbench_v1_1_0_260420.json`, the legacy
+  `kmetbench_implicit.json`, and older reasoning snapshots kept only for
+  provenance
+- `data/archive/metadata/` for audit/provenance/release metadata
+
+Legacy preprocess helpers may still resolve old bare merged filenames through a
+compatibility resolver, but that retired location is not the canonical home for
+stable datasets and should not receive new source-of-truth files.
+
+Regenerable preprocess artifacts do not belong in the retired merged
+compatibility location. By default,
+reasoning preprocess tools now write sampled IDs/items, batch dumps, and CSV
+exports under:
+
+- `results/private_summary/preprocess/reasoning/`
+- `results/private_summary/preprocess/reasoning_multimodal/`
+
+Older snapshots that are still worth keeping but should not be used as defaults
+belong under `data/archive/`.
+
+Exploratory notebooks that supported preprocess review stay under
+`notebooks/preprocess/`. They are private analysis assets, not canonical
+pipeline entrypoints.
+
+For the current preprocess layout and retired compatibility notes, see
+[docs/preprocess_compatibility.md](docs/preprocess_compatibility.md) and
+[scripts/preprocess/README.md](scripts/preprocess/README.md).
+
+## Evaluation Entrypoints
+
+Canonical evaluation now starts from `scripts/eval.py` plus a model YAML under
+`configs/models/`.
+
+List the currently defined model configs:
 
 ```bash
 uv run python scripts/eval.py run --list-model-configs
 ```
 
-Fastest path: run against an existing OpenAI-compatible endpoint backed by the
-Qwen3-VL-8B-Thinking config.
-
-Start a matching local `vllm` server from the same model config:
+Public-protocol run through a vLLM-backed config:
 
 ```bash
-bash scripts/setup/serve_vllm_for_kmetbench.sh \
-  --model-config vllm/Qwen_Qwen3-VL-8B-Thinking
-```
-
-```bash
-# explicit_advanced
 uv run python scripts/eval.py run \
   --model-config vllm/Qwen_Qwen3-VL-8B-Thinking \
+  --protocol public \
   --prompt-type advanced \
   --data-type explicit
-
-# explicit_reasoning
-uv run python scripts/eval.py run \
-  --model-config vllm/Qwen_Qwen3-VL-8B-Thinking \
-  --prompt-type reasoning \
-  --data-type explicit
 ```
 
-Local `transformers` fallback:
+Private-protocol run through a local `transformers` fallback config:
 
 ```bash
 uv run python scripts/eval.py run \
   --model-config hf/meta-llama_Llama-3.2-90B-Vision-Instruct \
+  --protocol private \
   --prompt-type advanced \
   --data-type explicit
 ```
 
-Inspect the resolved dispatch payload before running:
+Dry-run the resolved dispatch payload before execution:
 
 ```bash
 uv run python scripts/eval.py run \
   --model-config vllm/Qwen_Qwen3-VL-8B-Thinking \
+  --protocol public \
   --prompt-type reasoning \
   --data-type explicit \
   --dry-run
 ```
 
-Reasoning judge stays in the same top-level script:
+Reasoning judge runs from the same top-level entrypoint:
 
 ```bash
 export GEMINI_API_KEY=...
@@ -127,22 +193,26 @@ uv run python scripts/eval.py judge \
 | --- | --- | --- |
 | `--model-config` | required unless `--list-model-configs` | Config path or identifier under `configs/models/`. |
 | `--list-model-configs` | `False` | Print the available model configs and exit. |
-| `--prompt-type` | `advanced` | Prompt type: `advanced` or `reasoning`. |
-| `--data-type` | `explicit` | Public data type. |
+| `--protocol` | `private` | `private` uses the full repo protocol; `public` restricts to the export-safe protocol. |
+| `--prompt-type` | `advanced` | Prompt type. |
+| `--data-type` | `explicit` | Data split selector. |
 | `--image-root` | repo default | Override the image root. |
 | `--explicit-data-file` | repo default | Override the explicit benchmark JSON path. |
-| `--output-root` | `experiments/results/evaluation` | Override the output directory for evaluation JSON files. |
+| `--implicit-data-file` | repo default | Override the implicit benchmark JSON path when using the private split. |
+| `--output-root` | `results/evaluation` | Override the output directory for evaluation JSON files. |
 | `--api-key` | config env fallback | Override the API key instead of using the model config env rule. |
 | `--base-url` | config default | Override the endpoint base URL. |
-| `--num-samples` | `-1` | Limit the number of evaluated samples. |
 | `--temperature` | config default or runtime default | Override temperature. |
 | `--top-p` | config default or runtime default | Override top-p. |
+| `--max-tokens` | config default or prompt runtime default | Override max tokens. |
+| `--num-samples` | `-1` | Limit the number of evaluated samples. |
 | `--seed` | `42` | Random seed. |
-| `--quiet` | `False` | Suppress per-item output. |
-| `--max-tokens` | config default or prompt runtime default | Maximum tokens to generate. |
 | `--concurrency` | backend default | Override concurrency for OpenAI-compatible runs. |
 | `--device` | config default or `cuda` | Override device for local `transformers` runs. |
+| `--quiet` | `False` | Suppress per-item output. |
 | `--dry-run` | `False` | Print the resolved dispatch payload without running evaluation. |
+
+For new runs, use `scripts/eval.py run`.
 
 **`scripts/eval.py judge`**
 
@@ -154,8 +224,8 @@ uv run python scripts/eval.py judge \
 | `--base-url` | `https://generativelanguage.googleapis.com/v1beta/openai/` | OpenAI-compatible Gemini endpoint. |
 | `--api-key` | `GEMINI_API_KEY` fallback | Judge API key. |
 | `--explicit-data-file` | repo default | Override the explicit benchmark JSON path. |
-| `--output-root` | `experiments/results/evaluation` | Override the output directory for judge results. |
-| `--data-type` | `explicit` | Public data type. |
+| `--output-root` | `results/evaluation` | Override the output directory for judge results. |
+| `--data-type` | `explicit` | Public data type used by the judge entrypoint. |
 | `--prompt-type` | `reasoning_evaluation` | Judge prompt type. |
 | `--num-samples` | `-1` | Limit the number of judged samples. |
 | `--seed` | `42` | Random seed. |
@@ -166,6 +236,34 @@ uv run python scripts/eval.py judge \
 | `--wo-rationale` | `False` | Evaluate without the expert rationale block. |
 | `--quiet` | `False` | Suppress per-item output. |
 </details>
+
+## Result Management
+
+Private result artifacts are generated inside the private repo and reviewed
+before any public push:
+
+- `results/evaluation/`
+- `results/analysis/`
+- `results/public_summary/`
+- `results/public_summary/verification/`
+- `results/manifests/`
+
+Install or refresh the local repo-identity guards with:
+
+```bash
+bash scripts/setup/install_repo_identity_guards.sh
+```
+
+That installs `pre-push` hooks for:
+
+- `/home/soyeon/kmetbench/private/MeteorQA` -> `https://github.com/kmetbench/MeteorQA`
+- `/home/soyeon/kmetbench/public/kmetbench-release` -> `https://github.com/kmetbench/kmetbench-release`
+
+The previous `/tmp/kmetbench-release` path is kept only as a compatibility
+symlink.
+
+Use the public release repo only as an export target. Keep internal plans,
+debugging notes, export code, and raw results in `MeteorQA`.
 
 ## Citation
 
@@ -181,8 +279,10 @@ url={https://openreview.net/forum?id=1Gn5pKek8k}
 
 ## Contact
 
-For questions or concerns regarding the dataset or code, please contact Soyeon Kim (soyeon.k@kaist.ac.kr).
+For questions or concerns regarding the dataset or code, please contact Soyeon
+Kim (soyeon.k@kaist.ac.kr).
 
 ## License
 
-The code in this repository is released under the [MIT License](./LICENSE). The K-MetBench dataset is distributed separately on Hugging Face under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+Public code releases use the MIT License. The public dataset is distributed
+separately on Hugging Face under CC BY-NC-SA 4.0.
