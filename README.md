@@ -22,28 +22,10 @@ Korean-specific questions across five official subject areas: Weather Analysis
 and Forecast Theory (P1), Meteorological Observation Methods (P2), Atmospheric
 Dynamics (P3), Climatology (P4), and Atmospheric Physics (P5).
 
-## Repo Roles
-
-- `MeteorQA`: private canonical repo for code, preprocessing, experiments,
-  release tooling, and staging artifacts
-- `kmetbench-release`: public eval-kit repo only
-- Hugging Face dataset repo: public dataset export
-- `kmetbench.github.io`: public leaderboard export
-
-Read these first when preparing a release:
-
-- [docs/repo_roles.md](docs/repo_roles.md)
-- [docs/preprocess_compatibility.md](docs/preprocess_compatibility.md)
-- [docs/release_policy.md](docs/release_policy.md)
-- [docs/public_export_allowlist.md](docs/public_export_allowlist.md)
-- [docs/release_checklist.md](docs/release_checklist.md)
-
 ## Updates
 
-- **[2026/04/21]** Finalized the `v1.1.0` repair release metadata: the
-  canonical dataset filename is `data/kmetbench.json`, the repair manifest now
-  points to retained `repair_v1_1_0` assets, and the public release trackers
-  were prepared for the refreshed dataset/code sync.
+- **[2026/04/21]** Finalized the `v1.1.0` release metadata: the canonical
+  dataset filename is `data/kmetbench.json`.
 - **[2026/04/16]** Added private/public repo-role docs, release checklist, and
   local push guards for `MeteorQA` and `kmetbench-release`.
 
@@ -85,54 +67,6 @@ If `uv` is unavailable, use:
 ```bash
 pip install -r requirements-eval.txt
 ```
-
-## Preprocess Layout
-
-Canonical private preprocessing now uses two supported code surfaces plus a
-manual-review notebook area:
-
-- `scripts/preprocess/`: stable CLI surface for operators
-- `src/preprocess/`: canonical importable implementations
-- `notebooks/preprocess/`: exploratory notebooks used for manual inspection and
-  curation checks
-
-For new work, start from `scripts/preprocess/` or import from `src/preprocess/`.
-The legacy `src/preprocessing/` wrapper tree has been retired.
-
-The canonical private preprocessing dataset is:
-
-- `data/kmetbench.json`
-
-Archive-only snapshots and metadata live under `data/archive/`:
-
-- `data/archive/` for release snapshots such as
-  `kmetbench_v1_0_0_260416.json`, `kmetbench_v1_1_0_260420.json`, the legacy
-  `kmetbench_implicit.json`, and older reasoning snapshots kept only for
-  provenance
-- `data/archive/metadata/` for audit/provenance/release metadata
-
-Legacy preprocess helpers may still resolve old bare merged filenames through a
-compatibility resolver, but that retired location is not the canonical home for
-stable datasets and should not receive new source-of-truth files.
-
-Regenerable preprocess artifacts do not belong in the retired merged
-compatibility location. By default,
-reasoning preprocess tools now write sampled IDs/items, batch dumps, and CSV
-exports under:
-
-- `results/private_summary/preprocess/reasoning/`
-- `results/private_summary/preprocess/reasoning_multimodal/`
-
-Older snapshots that are still worth keeping but should not be used as defaults
-belong under `data/archive/`.
-
-Exploratory notebooks that supported preprocess review stay under
-`notebooks/preprocess/`. They are private analysis assets, not canonical
-pipeline entrypoints.
-
-For the current preprocess layout and retired compatibility notes, see
-[docs/preprocess_compatibility.md](docs/preprocess_compatibility.md) and
-[scripts/preprocess/README.md](scripts/preprocess/README.md).
 
 ## Evaluation Entrypoints
 
@@ -237,34 +171,6 @@ For new runs, use `scripts/eval.py run`.
 | `--quiet` | `False` | Suppress per-item output. |
 </details>
 
-## Result Management
-
-Private result artifacts are generated inside the private repo and reviewed
-before any public push:
-
-- `results/evaluation/`
-- `results/analysis/`
-- `results/public_summary/`
-- `results/public_summary/verification/`
-- `results/manifests/`
-
-Install or refresh the local repo-identity guards with:
-
-```bash
-bash scripts/setup/install_repo_identity_guards.sh
-```
-
-That installs `pre-push` hooks for:
-
-- `/home/soyeon/kmetbench/private/MeteorQA` -> `https://github.com/kmetbench/MeteorQA`
-- `/home/soyeon/kmetbench/public/kmetbench-release` -> `https://github.com/kmetbench/kmetbench-release`
-
-The previous `/tmp/kmetbench-release` path is kept only as a compatibility
-symlink.
-
-Use the public release repo only as an export target. Keep internal plans,
-debugging notes, export code, and raw results in `MeteorQA`.
-
 ## Citation
 
 ```bibtex
@@ -284,5 +190,6 @@ Kim (soyeon.k@kaist.ac.kr).
 
 ## License
 
-Public code releases use the MIT License. The public dataset is distributed
-separately on Hugging Face under CC BY-NC-SA 4.0.
+Public code releases use the [MIT License](LICENSE). The public dataset is
+distributed separately on Hugging Face under
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
