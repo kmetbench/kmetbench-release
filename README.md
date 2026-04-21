@@ -2,18 +2,12 @@
 
 [![Paper](https://img.shields.io/badge/Paper-ACL%202026-4285F4.svg?style=for-the-badge)](https://openreview.net/forum?id=1Gn5pKek8k)
 [![Dataset](https://img.shields.io/badge/Dataset-HuggingFace-EA4335.svg?style=for-the-badge)](https://huggingface.co/datasets/soyeonbot/K-MetBench)
-[![Code](https://img.shields.io/badge/Code-GitHub-FBBC05.svg?style=for-the-badge)](https://github.com/kmetbench/MeteorQA)
+[![Code](https://img.shields.io/badge/Code-GitHub-FBBC05.svg?style=for-the-badge)](https://github.com/kmetbench/kmetbench-release)
 [![Citation](https://img.shields.io/badge/Citation-BibTeX-34A853.svg?style=for-the-badge)](#citation)
 
 This repository is the private canonical K-MetBench workspace. Use it to curate
 data, run internal experiments, build public summaries, and export reviewed
 artifacts to the public release repos.
-
-Public destinations:
-
-- Public eval kit: `https://github.com/kmetbench/kmetbench-release`
-- Public dataset: `https://huggingface.co/datasets/soyeonbot/K-MetBench`
-- Public leaderboard: `https://kmetbench.github.io/`
 
 K-MetBench evaluates 1,774 questions drawn from the Korean National
 Meteorological Engineer Examination. The benchmark includes 82 multimodal
