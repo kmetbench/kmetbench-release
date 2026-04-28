@@ -1,6 +1,6 @@
 # K-MetBench: A Multi-Dimensional Benchmark for Fine-Grained Evaluation of Expert Reasoning, Locality, and Multimodality in Meteorology
 
-[![Paper](https://img.shields.io/badge/Paper-ACL%202026-4285F4.svg?style=for-the-badge)](https://openreview.net/forum?id=1Gn5pKek8k)
+[![Paper](https://img.shields.io/badge/Paper-ACL%20Findings%202026-4285F4.svg?style=for-the-badge)](http://arxiv.org/abs/2604.24645)
 [![Dataset](https://img.shields.io/badge/Dataset-HuggingFace-EA4335.svg?style=for-the-badge)](https://huggingface.co/datasets/soyeonbot/K-MetBench)
 [![Code](https://img.shields.io/badge/Code-GitHub-FBBC05.svg?style=for-the-badge)](https://github.com/kmetbench/kmetbench-release)
 [![Citation](https://img.shields.io/badge/Citation-BibTeX-34A853.svg?style=for-the-badge)](#citation)
@@ -171,9 +171,9 @@ For new runs, use `scripts/eval.py run`.
 @inproceedings{kim2026kmetbench,
 title={K-MetBench: A Multi-Dimensional Benchmark for Fine-Grained Evaluation of Expert Reasoning, Locality, and Multimodality in Meteorology},
 author={Kim, Soyeon and Kang, Cheongwoong and Lee, Myeongjin and Chang, Eun-Chul and Lee, Jaedeok and Choi, Jaesik},
-booktitle={The 64th Annual Meeting of the Association for Computational Linguistics},
+booktitle={Findings of the Association for Computational Linguistics: ACL 2026},
 year={2026},
-url={https://openreview.net/forum?id=1Gn5pKek8k}
+url={http://arxiv.org/abs/2604.24645}
 }
 ```
 
